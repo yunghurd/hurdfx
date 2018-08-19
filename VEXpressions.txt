@@ -1,0 +1,377 @@
+#
+# Attribute Wrangle
+#
+
+attribwrangle/snippet
+	Point Cloud Template
+	
+	vector vee;
+	vector col;
+
+	int h = pcopen(1, "P", @P, ch("rad"), chi("maxpoints"));
+	//vee = pcfilter(h, "v");
+	col = pcfilter(h, "Cd");
+	pcclose(h);
+
+	//@v = vee;
+	@Cd = col;
+	
+attribwrangle/snippet
+	Delete Point Percentage
+	
+	(rand(@id)>ch("thres"))?removepoint(0,@ptnum):0;
+
+attribwrangle/snippet
+	Name Pieces
+	
+	s@name = "chunk_"+itoa(i@class);
+	
+attribwrangle/snippet
+	Point Connections
+	
+	int nbrs = chi("maxpoints");
+	float rad = ch("rad");
+	int nbrid;
+
+	void line(int point1; int point2)
+	{
+		int prim = addprim(0, "polyline");
+		addvertex(0, prim, point1);
+		addvertex(0, prim, point2);
+	}
+
+	int h = pcopen(0, "P", @P, rad, nbrs+1);
+	for(int i=1;i<pcnumfound(h);i++)
+	{
+		nbrid = pcimportbyidxi(h, "point.number", i);   
+		line(@ptnum, nbrid);
+	}
+	
+attribwrangle/snippet
+	Relative Neighbourhood Graph
+	
+	// https://houdininote.tumblr.com/post/162427874300/connecting-points
+	
+	foreach(int pt; nearpoints(0, @P, 1.0, 10))
+	{
+		if(pt == @ptnum) continue;
+		
+		vector p = point(0, 'P', pt);
+		float dist = distance(p, @P);
+		
+		int ptsA[] = nearpoints(0, @P, dist);
+		int ptsB[] = nearpoints(0, p, dist);
+		
+		int chk = 0;
+		foreach(int cpt; ptsB)
+		{
+			if(cpt == @ptnum || cpt == pt) continue;
+			
+			chk = removevalue(ptsA, cpt);
+			if(chk) break;
+		}
+		
+		if(!chk)
+		{
+			int pr = addprim(0, 'polyline');
+			addvertex(0, pr, @ptnum);
+			addvertex(0, pr, pt);
+		}
+	}
+	
+attribwrangle/snippet
+	Gabriel Graph
+	
+	// https://houdininote.tumblr.com/post/162427874300/connecting-points
+
+	foreach(int pt; nearpoints(0, @P, 1.0, 10))
+	{
+		if(pt == @ptnum) continue;
+		
+		vector p = point(0, 'P', pt);
+		vector v = p - @P;
+		vector center = @P + v * 0.5;
+		float dist = length(v) * 0.5;
+		
+		int pts[] = nearpoints(0, center, dist);
+		
+		int chk = 0;
+		foreach(int cpt; pts)
+		{
+			if(cpt == @ptnum || cpt == pt) continue;
+			
+			chk = 1;
+			break;
+		}
+		
+		if(!chk)
+		{
+			int pr = addprim(0, 'polyline');
+			addvertex(0, pr, @ptnum);
+			addvertex(0, pr, pt);
+		}
+	}
+
+attribwrangle/snippet
+	Link Pieces
+	
+	void link(int pt1; int pt2) {
+		int prim = addprim(0,"polyline");
+		addvertex(0,prim,pt1);
+		addvertex(0,prim,pt2);
+		setprimgroup(0,"new",prim,1,"set");
+	}
+
+	int np[] = nearpoints(0,@P,1,10);
+
+	foreach( int p; np) {
+		if(@class!=point(0,"class",p))
+			link(@ptnum, p);
+        }
+	
+attribwrangle/snippet
+	Get Geo Outline
+	
+	int nNum;
+	vector nPos;
+	float avg = 0;
+
+	for( int i=0; i<neighbourcount(0,@ptnum); i++){
+		nNum = neighbour(0,@ptnum,i);
+		nPos = point(0,"P",nNum);
+		avg += dot(normalize(nPos-@P),@N);    
+		}
+
+	@outline = avg;
+	@Cd = @outline;
+		
+attribwrangle/snippet
+	Delete Points Inside Volume
+	
+	(volumesample(1,0,@P)<0) ? removepoint(0,@ptnum) : 0;
+	
+attribwrangle/snippet
+	Capture Points by ID
+	
+	float radius = ch("radius");
+	int minpt = chi("minpt");
+	int maxpt = chi("maxpt");
+	
+	int @pCaptPts[];
+	int pIds[];
+	float @pCaptWeights[];
+	vector @P;
+
+	@pCaptPts = pcfind(1, 'P', @P, radius, maxpt);
+	if (len(@pCaptPts) < minpt)
+	{
+		@pCaptPts = pcfind(1, 'P', @P, 1e15, minpt);
+		radius = 1.1 * distance(@P, point(1, 'P', @pCaptPts[-1]));
+	}
+
+	foreach(int pt; @pCaptPts)
+	{
+		push(pIds, int(point(1,"id",pt)));
+	}
+
+	foreach (int pt; @pCaptPts)
+	{
+		float r2 = distance2( vector(point(1, 'P', pt)), @P );
+		r2 /= radius*radius;
+		float weight = 1-r2;
+		weight *= weight;
+		//weight = 1-weight;
+		
+		push(@pCaptWeights, weight);
+	}
+
+	@pCaptPts = pIds;
+
+attribwrangle/snippet
+	Varied Distance AttribTransfer
+	
+	vector col;
+	float di = 0;
+	float rad = ch("rad");
+	int max = chi("max");
+
+	// get pscale from point cloud
+	float psize = 0;
+	int g = pcopen(1,"P",@P,r,max);
+	psize = pcfilter(g,"pscale");
+	pcclose(g);
+
+	// get distance from positon to point cloud
+	int h = pcopen(1,"P",@P,psize,max);
+	col = pcfilter(h,"Cd");
+	di = pcimportbyidxf(h,"point.distance",0);
+	pcclose(h);
+
+	float r = fit(di,0,psize,1,0);
+	float p = pow(r,ch("pow"));
+
+	@Cd = col * p;
+
+	@psize = psize;
+
+attribwrangle/snippet
+	Appear Only on Creation Frame
+	// 1st Input: Geo
+	// 2nd Input: Timeshift ($F-1)
+	// Use for Cluster Setups 
+
+	int elem = findattribval(1,"point","cluster",i@cluster);
+	(elem==-1)?0:removepoint(0,@ptnum);
+	
+attribwrangle/snippet
+	[Prim] Group Prims Inside Box
+	
+	vector min, max;
+	getbbox(1,min,max);
+
+	int inner[] = primfind(0,min,max);
+
+	foreach (int p; inner){
+		setattrib(0,"prim","Cd",p,0,{1,0,0},"set");
+		setprimgroup(0,"inbox",p,1,"set");
+		}
+		
+attribwrangle/snippet
+	[Prim] List Primitive Neighbours
+	
+	int     prim_edge, edge, prim, i, n, num;
+	string  neighbours = "";
+	int     primnei[];
+
+	i = 0;
+	prim_edge = primhedge(0, @primnum);
+
+	while(i < primvertexcount(0, @primnum))
+	{
+		num = hedge_equivcount(0, prim_edge);
+		n = 0;
+		while(n < num)
+		{
+			edge = hedge_nextequiv(0, prim_edge);
+			prim = hedge_prim(0, edge);
+			if(prim != @primnum){
+				neighbours += sprintf("%g ", prim);
+				push(primnei, prim);
+			}
+			prim_edge = edge;
+			n++;
+		}
+
+		prim_edge = hedge_next(0, prim_edge);
+		i++;      
+	}
+
+	//s@neighbours = neighbours;
+	i[]@primneighbours = primnei;
+	
+attribwrangle/snippet
+	[Prim] Add Point at Center of Each Primitive
+	// Run over Primitives
+	
+	float area = primintrinsic(0,"measuredarea",@primnum);
+	int newPt = addpoint(0,@P);
+	
+	//setpointattrib(0,"pscale",newPt,area,"set");
+	setpointattrib(0,"N",newPt,@N,"set");
+	removeprim(0,@primnum,1);
+	
+attribwrangle/snippet
+	[Prim] [For Each] Keep Matching Iteration	
+	int iter = detail(1,"iteration");
+	string val = detail(1,"value");
+
+	if(s@name!=val)
+		removeprim(0,@primnum,1);
+	
+attribwrangle/snippet
+	[Packed Prim] Scale Attrib from BBox
+	// Use for Packed Prims
+	
+	float bb[] = primintrinsic(0, "bounds", @primnum);
+	vector ss = set(abs(bb[0]-bb[1]), abs(bb[2]-bb[3]), abs(bb[4]-bb[5]));
+	float V = ss.x * ss.y * ss.z;
+	
+	@vol = V;
+	//v@scale = ss;
+
+attribwrangle/snippet
+	[Solver] Age Points in Group
+	// 1st Input: Prev_Frame
+	// 2nd Input: Input_1
+
+	vector curCol = point(1,"Cd",@ptnum);
+	vector defCol = @Cd;
+
+	if(defCol != curCol)
+		i@age++;
+	
+attribwrangle/snippet	
+	[Solver] Accumulation in SolverSOP
+	// 1st Input: Current
+	// 2nd Input: Previous
+	// Black to Red, w/cframe attrib
+
+	// Update cframe
+	int var;
+
+	if(@Cd.x>0)
+		var = @Frame;
+	else
+		var = point(1,"cframe",@ptnum);
+		
+	i@cframe = var;
+
+	// Keep Color
+	@Cd = max(@Cd, point(1, "Cd", @ptnum));
+
+attribwrangle/snippet
+	[Vert] Cubic UV Layout
+
+	vector bbox = relbbox(0, @P);
+	vector side = sign(@N);
+	vector nml  = abs(@N);
+
+	vector size  = getbbox_size(0);
+	vector ratio = size / max(size);
+	vector scale = bbox * ratio;
+
+	if      (nml.x == max(nml)) { @uv = set(scale.y * side.x, scale.z, 0);             }
+	else if (nml.y == max(nml)) { @uv = set(scale.x * side.y, scale.z, 0); @uv.y += 1; }
+	else                        { @uv = set(scale.x * side.z, scale.y, 0); @uv.y += 2; }
+
+	@uv *= 0.3333;
+	@uv.x += 0.5;
+
+attribwrangle/snippet
+	---
+	
+#
+# Volume Wrangle
+#
+
+volumewrangle/snippet
+	Gridless Advection
+	
+	vector pos = @P;
+	float vx, vy, vz;
+	vector vels;
+
+	for( int i=0; i<ch("steps"); i++ ){
+		vx = volumesample(1,0,pos);
+		vy = volumesample(1,1,pos);
+		vz = volumesample(1,2,pos);
+		vels = set(vx,vy,vz);
+		
+		pos += -vels*ch("timeInc");
+		}
+		
+	@density = volumesample(0,0,pos);
+
+#
+# POPs
+#
