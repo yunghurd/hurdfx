@@ -1,0 +1,1073 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <!-- This file contains definitions of shelves, toolbars, and tools.
+ It should not be hand-edited when it is being used by the application.
+ Note, that two definitions of the same element are not allowed in
+ a single file. -->
+
+  <toolshelf name="hurdfx" label="HurdFX">
+    <memberTool name="camerascale"/>
+    <memberTool name="fastmerge"/>
+    <memberTool name="mergecollect"/>
+    <memberTool name="smokeobjectBBox"/>
+    <memberTool name="correctslash"/>
+    <memberTool name="compareNodes"/>
+    <memberTool name="resetScene"/>
+    <memberTool name="resetNet"/>
+    <memberTool name="resetsim"/>
+    <memberTool name="centexp"/>
+    <memberTool name="Save as CMD"/>
+    <memberTool name="Import CMD"/>
+  </toolshelf>
+
+  <tool name="camerascale" label="Camera Scale" icon="hicon:/SVGIcons.index?TOOLS_view.svg">
+    <helpText><![CDATA["""Properly apply scales to all existing cameras when parented."""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[cont_type = hou.nodeType(hou.objNodeTypeCategory(),"cam")
+cont = cont_type.instances()
+
+cams = []
+list = ''
+
+for inst in cont:
+
+    if inst.name() != "null_arnold_cam":
+        inst.parmTuple('s').deleteAllKeyframes()
+        #inst.parmTuple('s').hide(0)
+        inst.parm('sx').setExpression('origin(opinputpath(".",0), "", "SX")')
+        inst.parm('sy').setExpression('origin(opinputpath(".",0), "", "SY")')
+        inst.parm('sz').setExpression('origin(opinputpath(".",0), "", "SZ")')
+        
+        inst.parm('near').deleteAllKeyframes()
+        inst.parm('near').set('0.0001')
+        
+        #inst.parm('resx').set('1920')
+        #inst.parm('resy').set('1080')
+        
+        cams.append(inst.path())
+        
+for cam in cams:
+    list = list + '\n' + cam
+
+hou.ui.displayMessage("Scaled Cameras",buttons=('OK',),help=list)]]></script>
+  </tool>
+
+  <tool name="groupold" label="Group - Old" icon="SOP_group">
+    <helpURL>operator:Sop/group</helpURL>
+    <toolMenuContext name="network">
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Group</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+            
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('group'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_group1 (Sop/group)
+set _obj_geo1_group1 = `run("opadd -e -n -v group group1")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_group1
+chblockbegin
+chadd -t 0 0 $_obj_geo1_group1 rangeend
+chkey -t 0 -v 0 -m 0 -a 0 -A 0 -T a  -F '$N' $_obj_geo1_group1/rangeend
+chblockend
+opset -d off -r off -h on -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_group1
+opexprlanguage -s hscript $_obj_geo1_group1
+opset -p on $_obj_geo1_group1
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_group1
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_group1
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+]]></script>
+  </tool>
+
+  <tool name="scatterold" label="Scatter - Old" icon="SOP_scatter">
+    <helpURL>operator:Sop/scatter</helpURL>
+    <toolMenuContext name="network">
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Particle</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+            
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('scatter'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_scatter1 (Sop/scatter)
+set _obj_geo1_scatter1 = `run("opadd -e -n -v scatter scatter1")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_scatter1
+opset -d off -r off -h off -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_scatter1
+opexprlanguage -s hscript $_obj_geo1_scatter1
+opset -p on $_obj_geo1_scatter1
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_scatter1
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_scatter1
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+]]></script>
+  </tool>
+
+  <tool name="polyextrudeold" label="PolyExtrude - Old" icon="SOP_polyextrude">
+    <helpURL>operator:Sop/polyextrude</helpURL>
+    <toolMenuContext name="network">
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Polygon</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+            
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('polyextrude'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_polyextrude2 (Sop/polyextrude)
+set _obj_geo1_polyextrude2 = `run("opadd -e -n -v polyextrude polyextrude2")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_polyextrude2
+opparm -V 16.0.504.20 $_obj_geo1_polyextrude2 keepshared ( average ) orientedge ( on )
+opset -d off -r off -h off -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_polyextrude2
+opexprlanguage -s hscript $_obj_geo1_polyextrude2
+opset -p on $_obj_geo1_polyextrude2
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_polyextrude2
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_polyextrude2
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+]]></script>
+  </tool>
+
+  <tool name="particlefluidsurfaceold" label="Particle Fluid Surface - Old" icon="SOP_particlefluidsurface">
+    <helpURL>operator:Sop/particlefluidsurface</helpURL>
+    <toolMenuContext name="network">
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Fluid</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+            
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('particlefluidsurface'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_particlefluidsurface2 (Sop/particlefluidsurface)
+set _obj_geo1_particlefluidsurface2 = `run("opadd -e -n -v particlefluidsurface particlefluidsurface2")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_particlefluidsurface2
+chblockbegin
+chadd -t 0 0 $_obj_geo1_particlefluidsurface2 stepsizey
+chkey -t 0 -v 0.10000000000000001 -m 0 -a 0 -A 0 -T a  -F 'ch("stepsizex")' $_obj_geo1_particlefluidsurface2/stepsizey
+chadd -t 0 0 $_obj_geo1_particlefluidsurface2 stepsizez
+chkey -t 0 -v 0.10000000000000001 -m 0 -a 0 -A 0 -T a  -F 'ch("stepsizex")' $_obj_geo1_particlefluidsurface2/stepsizez
+chblockend
+opset -d off -r off -h off -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_particlefluidsurface2
+opexprlanguage -s hscript $_obj_geo1_particlefluidsurface2
+opset -p on $_obj_geo1_particlefluidsurface2
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_particlefluidsurface2
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_particlefluidsurface2
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+]]></script>
+  </tool>
+
+  <tool name="fastmerge" label="Fast Merge" icon="SOP_object_merge">
+    <helpText><![CDATA["""Create a new Geo node with an Object Merge from a selected Object node.
+Geo node must have an OUT node inside.
+Operates on each selected node."""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[sel = hou.selectedNodes()
+
+for n in sel:
+    #path = n.path()+"/OUT"
+    path = n.displayNode().path()
+    
+    geo = n.createOutputNode("geo",n.name()+"_merge")
+    geo.setFirstInput(None,0)
+    
+    geo.children()[0].destroy()
+    om = geo.createNode("object_merge","get_"+n.name())
+    om.parm("objpath1").set(path)
+    om.parm("xformpath").set(".")
+    om.setColor(hou.Color((0.8,0.016,0.016)))]]></script>
+  </tool>
+
+  <tool name="correctslash" label="Correct Slash Clipboard" icon="hicon:/SVGIcons.index?CHANNELS_linear.svg">
+    <helpText><![CDATA["""Changes backslashes to slashes in a path string in the system clipboard. (H16)"""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+      <contextNetType>CHOP</contextNetType>
+      <contextNetType>ROP</contextNetType>
+      <contextNetType>SHOP</contextNetType>
+      <contextNetType>COP2</contextNetType>
+      <contextNetType>VOP</contextNetType>
+      <contextNetType>VOPNET</contextNetType>
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[t = hou.ui.getTextFromClipboard()
+r = t.replace("\\","/")
+hou.ui.copyTextToClipboard(r)
+
+hou.ui.setStatusMessage("Changed clipboard string to:  "+r)]]></script>
+  </tool>
+
+  <tool name="compareNodes" label="Compare Nodes" icon="VOP_compare">
+    <helpText><![CDATA["""Select two nodes of the same type and run. Shows a list of all the parameters that differ
+in the Houdini Console or a Python Shell."""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+      <contextNetType>CHOP</contextNetType>
+      <contextNetType>ROP</contextNetType>
+      <contextNetType>SHOP</contextNetType>
+      <contextNetType>COP2</contextNetType>
+      <contextNetType>VOP</contextNetType>
+      <contextNetType>VOPNET</contextNetType>
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[selnodes = hou.selectedNodes()
+aa = selnodes[0]
+bb = selnodes[1]
+missList = []
+list = ''
+
+if aa.type().name() == bb.type().name():
+
+    aaParms = aa.parmTuples()
+    bbParms = bb.parmTuples()
+    mm = min(len(aaParms),len(bbParms))
+    
+    for i in range(mm):
+        if str(aaParms[i].eval()) != str(bbParms[i].eval()):
+            
+            name = aaParms[i].parmTemplate().type().name()
+        
+            if len(aaParms[i]) == 1:
+                if "Int" in name or "Float" in name:
+                    valuea = str(aaParms[i].eval()[0])
+                    valueb = str(bbParms[i].eval()[0])
+                else:
+                    valuea = str(aaParms[i].evalAsStrings()[0])
+                    valueb = str(bbParms[i].evalAsStrings()[0])
+            else:
+                valuea = '  ,  '.join(str(c) for c in aaParms[i].evalAsStrings())
+                valueb = '  ,  '.join(str(c) for c in bbParms[i].evalAsStrings())
+                
+                
+            if valuea == "":
+                valuea = "--"
+            if valueb == "":
+                valueb = "--"
+                
+            entry = aaParms[i].description()+"  [ "+aaParms[i].name()+" ]  :\n     "+valuea+"\n     "+valueb+"\n\n+--------------------------------------+\n"
+            missList.append(entry)
+            
+    for e in missList:
+        list = list + '\n' + e
+        
+    if list == '':
+        list = "\n  All Parameters Match"
+    
+    #hou.ui.displayMessage(aa.name()+"\n   vs\n"+bb.name(), help=list)
+    print list]]></script>
+  </tool>
+
+  <tool name="smokeobjectBBox" label="Smoke Object BBox" icon="SHELF_box_fire">
+    <helpText><![CDATA["""Adds a parameter to a selected Smoke Object DOP which points to a SOP geometry that
+sets the initial bounding box."""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[sel = hou.selectedNodes()[0]
+
+if sel.type().name() == "smokeobject":
+    
+    if sel.parm('bbox') is None:
+        pg = sel.parmTemplateGroup()
+        file = hou.StringParmTemplate("bbox","BBox SOP",1,string_type=hou.stringParmType.NodeReference,file_type=hou.fileType.Geometry)
+        pg.insertAfter('t',file)
+        sel.setParmTemplateGroup(pg)
+    
+    sel.parm('sizex').setExpression('bbox(chs("bbox"),6)')
+    sel.parm('sizey').setExpression('bbox(chs("bbox"),7)')
+    sel.parm('sizez').setExpression('bbox(chs("bbox"),8)')
+    sel.parm('tx').setExpression('centroid(chs("bbox"),0)')
+    sel.parm('ty').setExpression('centroid(chs("bbox"),1)')
+    sel.parm('tz').setExpression('centroid(chs("bbox"),2)')
+    sel.parm('bbox').set('`opinputpath("..",1)`')]]></script>
+  </tool>
+
+  <tool name="resetScene" label="Reset SceneViewer" icon="hicon:/SVGIcons.index?PANETYPES_viewer_3D.svg">
+    <helpText><![CDATA["""Resets Scene View (when viewport starts acting up). Saves Shading Mode, Camera position, and Flipbook settings."""]]></helpText>
+    <toolMenuContext name="viewer">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[cur = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer,0)
+vp = cur.curViewport()
+so = vp.settings().displaySet(hou.displaySetType.SceneObject)
+fb = cur.flipbookSettings()
+somode = so.shadedMode()
+
+cam = hou.node("/obj").createNode("cam")
+vp.saveViewToCamera(cam)
+cam.parm("projection").set(0)
+
+new = cur.pane().createTab(hou.paneTabType.SceneViewer)
+nvp = new.curViewport()
+ndm = nvp.settings().displaySet(hou.displaySetType.DisplayModel)
+nso = nvp.settings().displaySet(hou.displaySetType.SceneObject)
+nso.setShadedMode(somode)
+nvp.setCamera(cam)
+ndm.setLinkToDisplaySet(hou.displaySetType.SceneObject)
+new.flipbookSettings().copy(fb)
+
+cur.close()
+
+cam.destroy()]]></script>
+  </tool>
+
+  <tool name="resetNet" label="Reset NodeViewer" icon="hicon:/SVGIcons.index?PANETYPES_network.svg">
+    <helpText><![CDATA["""Resets Node View (when you are unable to create new nodes). Keeps preferences."""]]></helpText>
+    <toolMenuContext name="viewer">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[cur = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor,0)
+p = cur.getPrefs()
+
+new = cur.pane().createTab(hou.paneTabType.NetworkEditor)
+new.setPrefs(p)
+new.setPin(0)
+
+cur.close()]]></script>
+  </tool>
+
+  <tool name="resetsim" label="Reset Simulation" icon="hicon:/SVGIcons.index?BUTTONS_cook.svg">
+    <helpText><![CDATA["""Presses the 'Reset Simulation' button when inside a DOP network"""]]></helpText>
+    <toolMenuContext name="viewer">
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolMenuContext name="network">
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[cur = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor,0).pwd()
+
+if cur.type().name() == "dopnet":
+    cur.parm('resimulate').pressButton()]]></script>
+  </tool>
+
+  <tool name="mergecollect" label="Fast Merge Collect" icon="SOP_object_merge">
+    <helpText><![CDATA["""Create a new Geo node with an Object Merge from a set of selected Object nodes.
+Geo nodes must have an OUT node inside.
+Collects to one Object Merge SOP."""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[sel = hou.selectedNodes()
+fsel = sel[0]
+paths = []
+
+for n in sel:
+    #paths.append(n.path()+"/OUT")
+    paths.append(n.displayNode().path())
+
+amt = len(paths)
+
+geo = fsel.createOutputNode("geo","collected_merge")
+geo.setFirstInput(None,0)
+
+geo.children()[0].destroy()
+om = geo.createNode("object_merge","get_all")
+om.parm("numobj").set(amt)
+
+for i in range(amt):
+    om.parm("objpath"+str(i+1)).set(paths[i])
+    
+om.parm("xformpath").set(".")
+om.setColor(hou.Color((0.8,0.016,0.016)))]]></script>
+  </tool>
+
+  <tool name="centexp" label="CentroidExp to ParmClip" icon="hicon:/SVGIcons.index?BUTTONS_external_editor.svg">
+    <helpText><![CDATA["""Copies the centroid information and keeps a centroid expression (x,y,z) in the Parameter Clipboard.
+When in Object level, gets the SOP with the display flag on."""
+]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[sel = hou.selectedNodes()[0]
+cat = sel.type().category().name()
+pa = ""
+
+if cat == 'Sop':
+    pa = sel.path()
+if cat == 'Object':
+    pa = sel.displayNode().path()
+
+t = hou.node("/obj").createNode("null")
+t.parm("tx").setExpression("centroid(\""+pa+"\",0)")
+t.parm("ty").setExpression("centroid(\""+pa+"\",1)")
+t.parm("tz").setExpression("centroid(\""+pa+"\",2)")
+
+t.parmTuple("t").copyToParmClipboard()
+
+hou.ui.setStatusMessage("Parm Clipboard   --   "+t.parm("tx").expression()+"   --   "+str(t.parmTuple("t").evalAsStrings()))
+
+t.destroy()]]></script>
+  </tool>
+
+  <tool name="Save as CMD" label="Save Scene as CMD" icon="hicon:/SVGIcons.index?DESKTOP_hipnc.svg">
+    <helpText><![CDATA["""Save the entire Houdini scene as a CMD file."""]]></helpText>
+    <script scriptType="python"><![CDATA[file = hou.ui.selectFile(title="Save .cmd File", file_type=hou.fileType.Cmd, chooser_mode=hou.fileChooserMode.Write)
+
+if file is not "":
+    if file.endswith(".cmd") is False:
+        file+=".cmd"
+    
+    hou.hscript("opscript -r -b / > "+file)
+    hou.ui.setStatusMessage("Wrote out:  "+file)
+#    hou.ui.copyTextToClipboard("cmdread "+file)]]></script>
+  </tool>
+
+  <tool name="polybevelold" label="PolyBevel - Old" icon="SOP_polybevel">
+    <helpURL>operator:Sop/polybevel</helpURL>
+    <toolMenuContext name="network">
+      <contextOpType>Sop/polybevel</contextOpType>
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Polygon</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+            
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('polybevel'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_polybevel2 (Sop/polybevel)
+set _obj_geo1_polybevel2 = `run("opadd -e -n -v polybevel polybevel2")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_polybevel2
+opset -d off -r off -h off -f off -y off -t on -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_polybevel2
+opexprlanguage -s hscript $_obj_geo1_polybevel2
+opset -p on $_obj_geo1_polybevel2
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_polybevel2
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_polybevel2
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+]]></script>
+  </tool>
+
+  <tool name="Import CMD" label="Import CMD File" icon="hicon:/SVGIcons.index?DESKTOP_hip.svg">
+    <helpText><![CDATA["""Import a CMD file."""]]></helpText>
+    <script scriptType="python"><![CDATA[file = hou.ui.selectFile(title="Import .cmd File", file_type=hou.fileType.Cmd, chooser_mode=hou.fileChooserMode.Read)
+
+if file.endswith(".cmd") is True:
+    hou.hscript("cmdread "+file)]]></script>
+  </tool>
+</shelfDocument>
