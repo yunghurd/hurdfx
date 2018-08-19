@@ -1,7 +1,7 @@
 # hurdfx
 Houdini Asset Library
 
-A colllection of my configurations, galleries, setups, etc. for SideFX Houdini.
+A collection of my configurations, galleries, setups, etc. for SideFX Houdini.
 
 My first time using GitHub. Don't really know what I'm doing.
 
