@@ -663,7 +663,9 @@ for n in sel:
     geo = n.createOutputNode("geo",n.name()+"_merge")
     geo.setFirstInput(None,0)
     
-    geo.children()[0].destroy()
+    if len(geo.children()) > 0:
+        geo.children()[0].destroy()
+        
     om = geo.createNode("object_merge","get_"+n.name())
     om.parm("objpath1").set(path)
     om.parm("xformpath").set(".")
@@ -863,7 +865,9 @@ amt = len(paths)
 geo = fsel.createOutputNode("geo","collected_merge")
 geo.setFirstInput(None,0)
 
-geo.children()[0].destroy()
+if len(geo.children()) > 0:
+    geo.children()[0].destroy()
+    
 om = geo.createNode("object_merge","get_all")
 om.parm("numobj").set(amt)
 
