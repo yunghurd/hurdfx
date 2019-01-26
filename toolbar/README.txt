@@ -11,6 +11,10 @@ Fast Merge Collect -
 Create a new Geo node with an Object Merge from a set of selected Object nodes.
 Collects to one Object Merge SOP.
 
+Smoke Object BBox -
+Adds a parameter to a selected Smoke Object DOP which points to a SOP geometry that
+sets the initial bounding box.
+
 Correct Slash Clipboard -
 Changes backslashes to slashes in a path string in the system clipboard.
 
