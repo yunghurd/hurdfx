@@ -1,1 +1,56 @@
+HurdFX Gallery:
 
+[ Object Level ]
+
++ Instance
+- Instance Lights : A classic setup for instaning lights on points using Light Templates and ASAD Shaders.
+
++ Sample Geo
+-Backdrop
+-Ring of Objects
+
+
+[ SOP Level ]
+
++ Common VOPs
+- Color Map
+- Curve UV Map
+- Noise Erode Points
+- Rotate Packed Prims
+- ScalePacked Prims
+- UV Fix : Tries to repair UVs for fractured geo (voronoi, boolean, etc..)
+- VOP Turb Noise
+
++ DOP Nets
+- Pop Sim
+- Packed Sim
+- Pyro Sim (using an alternate setup, obselete in H17)
+
++ Preps
+- Grain Sheet Prep
+- Maya Prep
+- Pyro Bounds
+- Sim Instance Points (for clustered sims)
+
++ Presets
+- [attributecreate] Constraint Attribs
+- [vdbfrompoly] Collision Volume
+- [xform] Canter Pivot
+- [xform] World Center
+
++ Setups
+- Align Geo
+- Box Clip
+- CHOP Filter
+- Clipper
+- Copy Loop
+- Curve Normals
+- Deform by ID
+- Eucledian Minimum Spanning Tree
+- Interpolate Scatter
+- Make Loop (Anim)
+- P is UV
+- Split UV Overlap
+- Volume Timeblend (obsolete in H17)
+- Voronoi Debris Pieces
+- piv to Pivot
