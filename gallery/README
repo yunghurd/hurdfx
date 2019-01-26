@@ -54,3 +54,22 @@ HurdFX Gallery:
 - Volume Timeblend (obsolete in H17)
 - Voronoi Debris Pieces
 - piv to Pivot
+
+
+[ DOP Level ]
+
++ DOPs
+- Gas Shell Field : Creates a field for the round parts of a smoke sim
+- POP Stick
+- Smoke Box Orient (for clustering)
+
++ Presets
+- [gasresize] Sop Ref
+- [popspin] Grain Spin (fake rolling based on velocity and distance)
+
+
+[ VOP Level ]
+
++ VOPs
+- Angle Between (between 2 vectors)
+- Motion Vector (shader AOV)
