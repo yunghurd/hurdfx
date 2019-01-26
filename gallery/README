@@ -3,11 +3,11 @@ HurdFX Gallery:
 [ Object Level ]
 
 + Instance
-- Instance Lights : A classic setup for instaning lights on points using Light Templates and ASAD Shaders.
+- Instance Lights : A classic setup for instancing lights on points using Light Templates and ASAD Shaders.
 
 + Sample Geo
--Backdrop
--Ring of Objects
+- Backdrop
+- Ring of Objects
 
 
 [ SOP Level ]
