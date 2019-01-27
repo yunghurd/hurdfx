@@ -17,8 +17,8 @@ HurdFX Gallery:
 - Curve UV Map
 - Noise Erode Points
 - Rotate Packed Prims
-- ScalePacked Prims
-- UV Fix : Tries to repair UVs for fractured geo (voronoi, boolean, etc..)
+- Scale Packed Prims
+- UV Fix (Tries to repair UVs for fractured geo (voronoi, boolean, etc..)
 - VOP Turb Noise
 
 + DOP Nets
@@ -35,7 +35,7 @@ HurdFX Gallery:
 + Presets
 - [attributecreate] Constraint Attribs
 - [vdbfrompoly] Collision Volume
-- [xform] Canter Pivot
+- [xform] Center Pivot
 - [xform] World Center
 
 + Setups
@@ -59,7 +59,7 @@ HurdFX Gallery:
 [ DOP Level ]
 
 + DOPs
-- Gas Shell Field : Creates a field for the round parts of a smoke sim
+- Gas Shell Field (Creates a field for the round parts of a smoke sim)
 - POP Stick
 - Smoke Box Orient (for clustering)
 
