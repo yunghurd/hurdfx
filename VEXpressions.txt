@@ -15,6 +15,17 @@ attribwrangle/snippet
 
 	//@v = vee;
 	@Cd = col;
+
+attribwrangle/snippet
+	Point Clench
+	
+	vector pos;
+
+	int h = pcopen(1, "P", @P, ch("rad"), chi("maxpoints"));
+	pos = pcfilter(h, "P");
+	pcclose(h);
+
+	@P = lerp(@P,pos,ch("bias"));
 	
 attribwrangle/snippet
 	Delete Point Percentage
