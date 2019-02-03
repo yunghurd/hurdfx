@@ -51,3 +51,11 @@ Save the entire Houdini scene as a CMD file.
 
 Import CMD File -
 Import a CMD file.
+
+
+Open Clipboard Dir - 
+Open the directory that is saved in the system Clipboard. (Windows)
+
+
+Explore File Path -
+Open directory to selected node's file path or output path. (Windows)
