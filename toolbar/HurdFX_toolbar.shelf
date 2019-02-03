@@ -11,6 +11,8 @@
     <memberTool name="mergecollect"/>
     <memberTool name="smokeobjectBBox"/>
     <memberTool name="correctslash"/>
+    <memberTool name="clipfolder"/>
+    <memberTool name="exploreFilePath"/>
     <memberTool name="compareNodes"/>
     <memberTool name="resetScene"/>
     <memberTool name="resetNet"/>
@@ -742,7 +744,7 @@ if aa.type().name() == bb.type().name():
             if valueb == "":
                 valueb = "--"
                 
-            entry = aaParms[i].description()+"  [ "+aaParms[i].name()+" ]  :\n     "+valuea+"\n     "+valueb+"\n\n+--------------------------------------+\n"
+            entry = aaParms[i].description()+"  [ "+aaParms[i].name()+" ]  :\n "+aa.name()+" -     "+valuea+"\n "+bb.name()+" -     "+valueb+"\n\n+--------------------------------------+\n"
             missList.append(entry)
             
     for e in missList:
@@ -1073,5 +1075,68 @@ hou.hscript(h_preamble + h_extra_args + h_cmd)
 
 if file.endswith(".cmd") is True:
     hou.hscript("cmdread "+file)]]></script>
+  </tool>
+
+  <tool name="clipfolder" label="Open Clipboard Dir" icon="hicon:/SVGIcons.index?COMMON_file.svg">
+    <helpText><![CDATA["""Open the directory that is saved in the system Clipboard (Windows)"""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+      <contextNetType>CHOP</contextNetType>
+      <contextNetType>ROP</contextNetType>
+      <contextNetType>SHOP</contextNetType>
+      <contextNetType>COP2</contextNetType>
+      <contextNetType>VOP</contextNetType>
+      <contextNetType>VOPNET</contextNetType>
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[import os
+
+t = hou.ui.getTextFromClipboard()
+r = t.replace("\\","/")
+
+mypath = os.path.dirname(r)
+
+os.startfile(mypath)]]></script>
+  </tool>
+
+  <tool name="exploreFilePath" label="Explore File Path" icon="hicon:/SVGIcons.index?BUTTONS_folder.svg">
+    <helpText><![CDATA["""Open directory to selected node's file path or output path. (Windows)"""]]></helpText>
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+      <contextNetType>CHOP</contextNetType>
+      <contextNetType>ROP</contextNetType>
+      <contextNetType>SHOP</contextNetType>
+      <contextNetType>COP2</contextNetType>
+      <contextNetType>VOP</contextNetType>
+      <contextNetType>VOPNET</contextNetType>
+      <contextNetType>DOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[import os
+
+def intersection(lst1, lst2): 
+    lst3 = [value for value in lst1 if value in lst2] 
+    return lst3 
+
+names = ["file","fileName","filename","vm_picture","filename1","copoutput"]
+pns = []
+sel = hou.selectedNodes()[0]
+parms = sel.allParms()
+
+for p in parms:
+    pns.append(p.name())
+
+m = intersection(names,pns)
+
+t = sel.parm(m[0]).eval()
+
+r = t.replace("\\","/")
+
+mypath = os.path.dirname(r)
+
+os.startfile(mypath)]]></script>
   </tool>
 </shelfDocument>
