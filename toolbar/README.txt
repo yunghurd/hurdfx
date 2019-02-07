@@ -59,3 +59,8 @@ Open the directory that is saved in the system Clipboard. (Windows)
 
 Explore File Path -
 Open directory to selected node's file path or output path. (Windows)
+
+
+Object Merge Clipboard -
+Lay down an Object Merge node after copying a SOP path. The objpath parameter
+will be set to the copied path.
