@@ -6,18 +6,19 @@
  a single file. -->
 
   <toolshelf name="hurdfx" label="HurdFX">
-    <memberTool name="camerascale"/>
     <memberTool name="fastmerge"/>
     <memberTool name="mergecollect"/>
-    <memberTool name="smokeobjectBBox"/>
-    <memberTool name="correctslash"/>
+    <memberTool name="objectMergeFromClip"/>
     <memberTool name="clipfolder"/>
+    <memberTool name="correctslash"/>
     <memberTool name="exploreFilePath"/>
+    <memberTool name="camerascale"/>
     <memberTool name="compareNodes"/>
+    <memberTool name="centexp"/>
     <memberTool name="resetScene"/>
     <memberTool name="resetNet"/>
     <memberTool name="resetsim"/>
-    <memberTool name="centexp"/>
+    <memberTool name="smokeobjectBBox"/>
     <memberTool name="Save as CMD"/>
     <memberTool name="Import CMD"/>
   </toolshelf>
@@ -1138,5 +1139,163 @@ r = t.replace("\\","/")
 mypath = os.path.dirname(r)
 
 os.startfile(mypath)]]></script>
+  </tool>
+
+  <tool name="objectMergeFromClip" label="Object Merge Clipboard" icon="SOP_object_merge">
+    <helpURL>operator:Sop/object_merge</helpURL>
+    <toolMenuContext name="network">
+      <contextOpType>Sop/object_merge</contextOpType>
+      <contextNetType>SOP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>HurdFX Toolbar</toolSubmenu>
+    <script scriptType="python"><![CDATA[
+import sys
+import toolutils
+
+clip = hou.ui.getTextFromClipboard()
+nam = hou.node(clip).name()
+
+outputitem = None
+inputindex = -1
+inputitem = None
+outputindex = -1
+
+num_args = 1
+h_extra_args = ''
+pane = toolutils.activePane(kwargs)
+if not isinstance(pane, hou.NetworkEditor):
+    pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+    if pane is None:
+       hou.ui.displayMessage(
+               'Cannot create node: cannot find any network pane')
+       sys.exit(0)
+else: # We're creating this tool from the TAB menu inside a network editor
+    pane_node = pane.pwd()
+    if kwargs.has_key("outputnodename") and kwargs.has_key("inputindex"):
+        outputitem = pane_node.item(kwargs["outputnodename"])
+        inputindex = kwargs["inputindex"]
+        h_extra_args += 'set arg4 = "' + kwargs["outputnodename"] + '"\n'
+        h_extra_args += 'set arg5 = "' + str(inputindex) + '"\n'
+        num_args = 6
+    if kwargs.has_key("inputnodename") and kwargs.has_key("outputindex"):
+        inputitem = pane_node.item(kwargs["inputnodename"])
+        outputindex = kwargs["outputindex"]
+        h_extra_args += 'set arg6 = "' + kwargs["inputnodename"] + '"\n'
+        h_extra_args += 'set arg9 = "' + str(outputindex) + '"\n'
+        num_args = 9 
+    if kwargs.has_key("autoplace"):
+        autoplace = kwargs["autoplace"]
+    else:
+        autoplace = False
+    # If shift-clicked we want to auto append to the current
+    # node
+    if kwargs.has_key("shiftclick") and kwargs["shiftclick"]:
+        if inputitem is None:
+            inputitem = pane.currentNode()
+            outputindex = 0
+    if kwargs.has_key("nodepositionx") and             kwargs.has_key("nodepositiony"):
+        try:
+            pos = [ float( kwargs["nodepositionx"] ),
+                    float( kwargs["nodepositiony"] )]
+        except:
+            pos = None
+    else:
+        pos = None
+
+    if not autoplace and not pane.listMode():
+        if pos is not None:
+            pass
+        elif outputitem is None:
+            pos = pane.selectPosition(inputitem, outputindex, None, -1)
+        else:
+            pos = pane.selectPosition(inputitem, outputindex,
+                                      outputitem, inputindex)
+
+    if pos is not None:
+        if kwargs.has_key("node_bbox"):
+            size = kwargs["node_bbox"]
+            pos[0] -= size[0] / 2
+            pos[1] -= size[1] / 2
+        else:
+            pos[0] -= 0.573625
+            pos[1] -= 0.220625
+        h_extra_args += 'set arg2 = "' + str(pos[0]) + '"\n'
+        h_extra_args += 'set arg3 = "' + str(pos[1]) + '"\n'
+h_extra_args += 'set argc = "' + str(num_args) + '"\n'
+
+# Added chip string to hscript
+h_extra_args += 'set argclip = "' + clip + '"\n'
+h_extra_args += 'set argname = "' + nam + '"\n'
+
+pane_node = pane.pwd()
+child_type = pane_node.childTypeCategory().nodeTypes()
+
+if not child_type.has_key('object_merge'):
+   hou.ui.displayMessage(
+           'Cannot create node: incompatible pane network type')
+   sys.exit(0)
+
+# First clear the node selection
+pane_node.setSelected(False, True)
+
+h_path = pane_node.path()
+h_preamble = 'set arg1 = "' + h_path + '"\n'
+h_cmd = r''' 
+if ($argc < 2 || "$arg2" == "") then
+   set arg2 = 0
+endif
+if ($argc < 3 || "$arg3" == "") then
+   set arg3 = 0
+endif
+# Automatically generated script
+# $arg1 - the path to add this node
+# $arg2 - x position of the tile
+# $arg3 - y position of the tile
+# $arg4 - input node to wire to
+# $arg5 - which input to wire to
+# $arg6 - output node to wire to
+# $arg7 - the type of this node
+# $arg8 - the node is an indirect input
+# $arg9 - index of output from $arg6
+
+\set noalias = 1
+set saved_path = `execute("oppwf")`
+opcf $arg1
+
+# Node $_obj_geo1_object_merge1 (Sop/object_merge)
+set _obj_geo1_object_merge1 = `run("opadd -e -n -v object_merge get_$argname")`
+oplocate -x `$arg2 + 0` -y `$arg3 + 0` $_obj_geo1_object_merge1
+opparm $_obj_geo1_object_merge1  numobj ( 1 )
+opparm $_obj_geo1_object_merge1 objpath1 ( $argclip )
+opset -d on -r on -h off -f off -y off -t off -l off -s off -u off -F on -c on -e on -b off $_obj_geo1_object_merge1
+opcolor -c 0.8 0.016 0.016 $_obj_geo1_object_merge1
+opexprlanguage -s hscript $_obj_geo1_object_merge1
+opset -p on $_obj_geo1_object_merge1
+
+opcf $arg1
+
+set oidx = 0
+if ($argc >= 9 && "$arg9" != "") then
+    set oidx = $arg9
+endif
+
+if ($argc >= 5 && "$arg4" != "") then
+    set output = $_obj_geo1_object_merge1
+    opwire -n $output -$arg5 $arg4
+endif
+if ($argc >= 6 && "$arg6" != "") then
+    set input = $_obj_geo1_object_merge1
+    if ($arg8) then
+        opwire -n -i $arg6 -0 $input
+    else
+        opwire -n -o $oidx $arg6 -0 $input
+    endif
+endif
+opcf $saved_path
+'''
+hou.hscript(h_preamble + h_extra_args + h_cmd)
+
+#print(n)
+]]></script>
   </tool>
 </shelfDocument>
