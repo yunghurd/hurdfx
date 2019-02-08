@@ -26,6 +26,31 @@ attribwrangle/snippet
 	pcclose(h);
 
 	@P = lerp(@P,pos,ch("bias"));
+
+attribwrangle/snippet
+	VOP Noise
+	
+	#include <voptype.h>
+	#include <voplib.h>
+
+	float noiseF;
+	vector noiseV;
+
+	vector freq = chv("freq"), offset = chv("offset");
+	int turb = chi("turb");
+	float amp = chf("amp");
+	float rough = chf("rough");
+	float atten = chf("atten");
+
+	// vop_perlinNoiseVV
+	// vop_simplexNoiseVV
+	// vop_simplexCurlNoiseVV
+	// vop_perlinCurlNoiseVV
+
+	noiseV = vop_correctperlinNoiseVV(@P * freq - offset, turb, amp, rough, atten);
+
+	@Cd = noiseV;
+	//@P += noiseV;
 	
 attribwrangle/snippet
 	Delete Point Percentage
