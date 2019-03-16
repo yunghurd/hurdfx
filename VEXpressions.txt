@@ -26,6 +26,17 @@ attribwrangle/snippet
 	pcclose(h);
 
 	@P = lerp(@P,pos,ch("bias"));
+	
+attribwrangle/snippet
+	Lookup Ramp
+	
+	vector bbox = relbbox(0,@P);
+	float n = bbox.x;
+
+	float time = (100-1)*@TimeInc;
+	float lu = chf("lookup",n*time);
+
+	@Cd = set(lu,0,0);
 
 attribwrangle/snippet
 	VOP Noise
