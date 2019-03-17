@@ -7,17 +7,18 @@ A collection of my configurations, galleries, setups, etc. for SideFX Houdini.
 
 In your .env file:
 
-`HURDFX = "path/to/hurdfx"`
-
-`HOUDINI_PATH = $HURDFX;&`
-
 ```
+HURDFX = "path/to/hurdfx"
+
+HOUDINI_PATH = $HURDFX;&
+
 HOUDINI_OTLSCAN_PATH = $HURDFX/otls;@/otls 
 HOUDINI_TOOLBAR_PATH = $HURDFX/toolbar;@/toolbar
 HOUDINI_GALLERY_PATH = $MOPS/gallery;@/gallery
 ```
 
 My first time using GitHub. Don't really know what I'm doing.
+(Update) Starting to get the hang of this.
 
 Feel free to check out my stuff.
 
