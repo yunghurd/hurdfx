@@ -14,7 +14,7 @@ HOUDINI_PATH = $HURDFX;&
 
 HOUDINI_OTLSCAN_PATH = $HURDFX/otls;@/otls 
 HOUDINI_TOOLBAR_PATH = $HURDFX/toolbar;@/toolbar
-HOUDINI_GALLERY_PATH = $MOPS/gallery;@/gallery
+HOUDINI_GALLERY_PATH = $HURDFX/gallery;@/gallery
 ```
 
 My first time using GitHub. Don't really know what I'm doing.
