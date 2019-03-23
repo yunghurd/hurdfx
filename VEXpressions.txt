@@ -244,7 +244,7 @@ attribwrangle/snippet
 
 	// get pscale from point cloud
 	float psize = 0;
-	int g = pcopen(1,"P",@P,r,max);
+	int g = pcopen(1,"P",@P,rad,max);
 	psize = pcfilter(g,"pscale");
 	pcclose(g);
 
@@ -269,6 +269,31 @@ attribwrangle/snippet
 
 	int elem = findattribval(1,"point","cluster",i@cluster);
 	(elem==-1)?0:removepoint(0,@ptnum);
+	
+attribwrangle/snippet
+	Sample Circle Uniform Vectors
+	vector dir = {0,0,1};
+	vector rv = sample_circle_uniform(rand(@ptnum));
+	matrix3 m = dihedral(dir,@N);
+
+	@N = rv*m;
+	//@P+=rv;
+	
+attribwrangle/snippet
+	Sample Circle Arc Vectors
+	vector dir = {0,1,0};
+	vector2 rv = sample_circle_arc({0,1},radians(ch("angle")),rand(@ptnum));
+	matrix3 m = dihedral(dir,@N);
+
+	@N = rv*m;
+
+attribwrangle/snippet
+	Sample Sphere Cone Vectors
+	vector dir = {0,0,1};
+	vector rv = sample_sphere_cone(@N,radians(ch("angle")),rand(@ptnum));
+	matrix3 m = dihedral(dir,@N);
+
+	@N = rv;
 	
 attribwrangle/snippet
 	[Prim] Group Prims Inside Box
