@@ -3,6 +3,12 @@
 #
 
 attribwrangle/snippet
+	Position Difference
+	
+	vector p2 = point(1,"P",@ptnum);
+	@v = @P-p2;
+
+attribwrangle/snippet
 	Point Cloud Template
 	
 	vector vee;
@@ -64,7 +70,7 @@ attribwrangle/snippet
 	//@P += noiseV;
 	
 attribwrangle/snippet
-	Delete Point Percentage
+	Erode
 	
 	(rand(@id)>ch("thres"))?removepoint(0,@ptnum):0;
 
