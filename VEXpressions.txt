@@ -75,6 +75,18 @@ attribwrangle/snippet
 	(rand(@id)>ch("thres"))?removepoint(0,@ptnum):0;
 
 attribwrangle/snippet
+	Substep Emission
+	
+	float substep = ch("substeps");
+	float fframe = ch("floatframe");
+
+	float mod = @ptnum%substep;
+	float framefrac = rint(frac(fframe)*10)/10;
+
+	if(mod!=(framefrac/(1/substep)))
+		removepoint(0,@ptnum);
+	
+attribwrangle/snippet
 	Name Pieces
 	
 	s@name = "chunk_"+itoa(i@class);
@@ -300,6 +312,12 @@ attribwrangle/snippet
 	matrix3 m = dihedral(dir,@N);
 
 	@N = rv;
+
+attribwrangle/snippet
+	Get Orient from Intrinsic
+	matrix3 m = primintrinsic(0,"transform",@ptnum);
+	p@orient = quaternion(m);
+	v@scale = cracktransform(0,0,2,{0,0,0},m);
 	
 attribwrangle/snippet
 	[Prim] Group Prims Inside Box
@@ -426,7 +444,22 @@ attribwrangle/snippet
 
 	@uv *= 0.3333;
 	@uv.x += 0.5;
+	
+attribwrangle/snippet
+	[Detail] ExtractTransform to Matrix
+	
+	vector pos = point(1,"P",0);
+	float pscale = point(1,"pscale",0);
+	vector4 orient = point(1,"orient",0);
+	matrix matx = qconvert(orient) * pscale;
+	vector4 row4 = pos;
 
+	matx.wx = pos.x;
+	matx.wy = pos.y;
+	matx.wz = pos.z;
+
+	4@xform = matx;
+	
 attribwrangle/snippet
 	---
 	
